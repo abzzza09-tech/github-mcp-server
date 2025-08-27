@@ -1,0 +1,88 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Phase 1 - MVP Touch UX</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    body { margin:0; overflow:hidden; background:#f4f4f4; }
+    #canvas { width:100vw; height:100vh; touch-action:none; background:white; }
+    .grid { stroke:#ddd; stroke-width:0.5; }
+  </style>
+</head>
+<body>
+  <svg id="canvas"></svg>
+  <script>
+    const svg = document.getElementById("canvas");
+    const NS = "http://www.w3.org/2000/svg";// Grid drawing
+function drawGrid() {
+  const width = window.innerWidth;
+  const height = window.innerHeight;
+  svg.setAttribute("width", width);
+  svg.setAttribute("height", height);
+  svg.innerHTML = '';
+  for (let x=0; x<width; x+=40) {
+    let line = document.createElementNS(NS,"line");
+    line.setAttribute("x1",x); line.setAttribute("y1",0);
+    line.setAttribute("x2",x); line.setAttribute("y2",height);
+    line.setAttribute("class","grid");
+    svg.appendChild(line);
+  }
+  for (let y=0; y<height; y+=40) {
+    let line = document.createElementNS(NS,"line");
+    line.setAttribute("x1",0); line.setAttribute("y1",y);
+    line.setAttribute("x2",width); line.setAttribute("y2",y);
+    line.setAttribute("class","grid");
+    svg.appendChild(line);
+  }
+}
+
+drawGrid();
+
+// Zoom & Pan variables
+let scale = 1;
+let originX = 0, originY = 0;
+let lastTouches = [];
+
+svg.addEventListener("touchstart", e => {
+  if (e.touches.length === 2) {
+    lastTouches = [...e.touches];
+  }
+}, {passive:false});
+
+svg.addEventListener("touchmove", e => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const [t1, t2] = e.touches;
+    const dx = t1.clientX - t2.clientX;
+    const dy = t1.clientY - t2.clientY;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    const lastdx = lastTouches[0].clientX - lastTouches[1].clientX;
+    const lastdy = lastTouches[0].clientY - lastTouches[1].clientY;
+    const lastDist = Math.sqrt(lastdx*lastdx + lastdy*lastdy);
+
+    scale *= dist/lastDist;
+    svg.style.transform = `translate(${originX}px,${originY}px) scale(${scale})`;
+    lastTouches = [...e.touches];
+  }
+}, {passive:false});
+
+// Double tap to reset
+let lastTap = 0;
+svg.addEventListener("touchend", e => {
+  const now = Date.now();
+  if (now - lastTap < 300 && e.touches.length===0) {
+    scale = 1; originX = 0; originY = 0;
+    svg.style.transform = `translate(0,0) scale(1)`;
+  }
+  lastTap = now;
+});
+
+// PWA Service Worker
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('sw.js');
+}
+
+  </script>
+</body>
+</html>
